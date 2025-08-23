@@ -1,0 +1,53 @@
+{% extends "default.html" %}
+{% load i18n %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h1 class="card-title">{{ post.title }}</h1>
+        <div class="card-text">{{ post.content|safe }}</div>
+    </div>
+    <div class="card-footer">
+        <small class="text-muted">
+            {{ post.created_at|date }} | {{ post.get_category_display }} | {% trans "Author" %}: {{ post.author.email }}
+        </small>
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'post_subscribe' post.pk %}" class="mt-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm {% if is_subscribed %}btn-danger{% else %}btn-success{% endif %}">
+                    {% if is_subscribed %}{% trans "Unsubscribe" %}{% else %}{% trans "Subscribe" %}{% endif %}
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<h3>{% trans "Responses" %}</h3>
+
+{% if user.is_authenticated %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="post" action="{% url 'response_create' post.pk %}">
+                {% csrf_token %}
+                {{ response_form.as_p }}
+                <button type="submit" class="btn btn-primary">{% trans "Send Response" %}</button>
+            </form>
+        </div>
+    </div>
+{% endif %}
+
+{% for response in responses %}
+    <div class="card mb-2 {% if response.is_accepted %}border-success{% endif %}">
+        <div class="card-body">
+            <p>{{ response.text }}</p>
+            <small class="text-muted">
+                {{ response.created_at|date }} | {% trans "From" %}: {{ response.author.email }}
+                {% if user == post.author and not response.is_accepted %}
+                    <a href="{% url 'accept_response' response.pk %}" class="btn btn-sm btn-success ms-2">{% trans "Accept" %}</a>
+                {% endif %}
+            </small>
+        </div>
+    </div>
+{% empty %}
+    <div class="alert alert-info">{% trans "No responses yet" %}</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "default.html" %}
+{% load i18n %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>{% trans "Create Response to" %} "{{ post.title }}"</h3>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.text.label_tag }}
+                {{ form.text }}
+                {{ form.text.errors }}
+                <small class="form-text text-muted">{% trans "Minimum 10 characters required" %}</small>
+            </div>
+            <button type="submit" class="btn btn-primary">{% trans "Submit Response" %}</button>
+            <a href="{% url 'post_detail' post.pk %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

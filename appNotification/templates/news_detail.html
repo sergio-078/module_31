@@ -1,0 +1,298 @@
+{% extends "default.html" %}
+{% load i18n %}
+
+{% block title %}{{ news.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <!-- Хлебные крошки -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'news_list' %}">{% trans "News" %}</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {{ news.title|truncatewords:5 }}
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Карточка новости -->
+            <div class="card news-detail-card">
+                <div class="card-body">
+                    <!-- Заголовок и мета-информация -->
+                    <div class="mb-4">
+                        <h1 class="card-title news-title">{{ news.title }}</h1>
+
+                        <div class="d-flex flex-wrap align-items-center text-muted news-meta">
+                            <div class="me-3">
+                                <i class="bi bi-calendar"></i>
+                                {% trans "Published" %}: {{ news.created_at|date:"d.m.Y H:i" }}
+                            </div>
+
+                            {% if news.updated_at != news.created_at %}
+                            <div class="me-3">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                {% trans "Updated" %}: {{ news.updated_at|date:"d.m.Y H:i" }}
+                            </div>
+                            {% endif %}
+
+                            <div>
+                                <i class="bi bi-eye"></i>
+                                {% trans "Views" %}: {{ news.views_count|default:0 }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Контент новости -->
+                    <div class="news-content mb-4">
+                        {{ news.content|safe }}
+                    </div>
+
+                    <!-- Кнопки действий -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div class="mb-2">
+                            <a href="{% url 'news_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> {% trans "Back to News" %}
+                            </a>
+                        </div>
+
+                        <!-- Кнопки для администраторов -->
+                        {% if user.is_staff %}
+                        <div class="btn-group mb-2" role="group">
+                            <a href="{% url 'news_edit' news.pk %}" class="btn btn-outline-primary">
+                                <i class="bi bi-pencil"></i> {% trans "Edit" %}
+                            </a>
+                            <a href="{% url 'news_delete' news.pk %}" class="btn btn-outline-danger"
+                               onclick="return confirm('{% trans 'Are you sure you want to delete this news?' %}')">
+                                <i class="bi bi-trash"></i> {% trans "Delete" %}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Подписка на новости -->
+            {% if user.is_authenticated %}
+            <div class="card mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-1">{% trans "Stay Updated" %}</h5>
+                            <p class="text-muted mb-0">{% trans "Subscribe to receive weekly news digests" %}</p>
+                        </div>
+                        <form method="post" action="{% url 'news_subscribe' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn {% if is_subscribed %}btn-danger{% else %}btn-success{% endif %}">
+                                {% if is_subscribed %}
+                                    <i class="bi bi-bell-slash"></i> {% trans "Unsubscribe" %}
+                                {% else %}
+                                    <i class="bi bi-bell"></i> {% trans "Subscribe" %}
+                                {% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <p class="mb-2">{% trans "Want to stay updated with the latest news?" %}</p>
+                    <a href="{% url 'login' %}" class="btn btn-primary me-2">{% trans "Login" %}</a>
+                    <a href="{% url 'register' %}" class="btn btn-outline-primary">{% trans "Register" %}</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Навигация между новостями -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 text-center">
+                            {% if previous_news %}
+                            <a href="{% url 'news_detail' previous_news.pk %}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-chevron-left"></i> {% trans "Previous News" %}
+                                <br>
+                                <small class="text-muted">{{ previous_news.title|truncatewords:4 }}</small>
+                            </a>
+                            {% else %}
+                            <button class="btn btn-outline-secondary w-100" disabled>
+                                <i class="bi bi-chevron-left"></i> {% trans "Previous News" %}
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-center">
+                            {% if next_news %}
+                            <a href="{% url 'news_detail' next_news.pk %}" class="btn btn-outline-secondary w-100">
+                                {% trans "Next News" %} <i class="bi bi-chevron-right"></i>
+                                <br>
+                                <small class="text-muted">{{ next_news.title|truncatewords:4 }}</small>
+                            </a>
+                            {% else %}
+                            <button class="btn btn-outline-secondary w-100" disabled>
+                                {% trans "Next News" %} <i class="bi bi-chevron-right"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.news-detail-card {
+    border: none;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+}
+
+.news-title {
+    color: #2c3e50;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+}
+
+.news-meta {
+    font-size: 0.9rem;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.news-meta i {
+    margin-right: 0.3rem;
+    opacity: 0.7;
+}
+
+.news-content {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #495057;
+}
+
+.news-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+.news-content iframe {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+.news-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+}
+
+.news-content table, .news-content th, .news-content td {
+    border: 1px solid #dee2e6;
+}
+
+.news-content th, .news-content td {
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.news-content th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .news-title {
+        font-size: 1.5rem;
+    }
+
+    .news-content {
+        font-size: 1rem;
+    }
+
+    .news-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Имитация счетчика просмотров (в реальном проекте нужно реализовать на бэкенде)
+    const viewCount = document.getElementById('view-count');
+    if (viewCount) {
+        // Генерируем случайное число для демонстрации
+        const randomViews = Math.floor(Math.random() * 100) + 50;
+        viewCount.textContent = randomViews.toLocaleString();
+    }
+
+    // Плавная прокрутка к якорям в контенте
+    const contentLinks = document.querySelectorAll('.news-content a[href^="#"]');
+    contentLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                targetElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Подсветка кода (если есть блоки с кодом)
+    const codeBlocks = document.querySelectorAll('.news-content pre');
+    codeBlocks.forEach(block => {
+        block.style.backgroundColor = '#f8f9fa';
+        block.style.padding = '1rem';
+        block.style.borderRadius = '6px';
+        block.style.overflowX = 'auto';
+        block.style.border = '1px solid #e9ecef';
+    });
+
+    // Открытие изображений в полный размер
+    const images = document.querySelectorAll('.news-content img');
+    images.forEach(img => {
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', function() {
+            this.classList.toggle('img-expanded');
+            if (this.classList.contains('img-expanded')) {
+                this.style.maxWidth = '100%';
+                this.style.position = 'fixed';
+                this.style.top = '50%';
+                this.style.left = '50%';
+                this.style.transform = 'translate(-50%, -50%)';
+                this.style.zIndex = '1000';
+                this.style.maxHeight = '90vh';
+                this.style.objectFit = 'contain';
+                this.style.backgroundColor = 'rgba(0,0,0,0.9)';
+                this.style.padding = '20px';
+                this.style.borderRadius = '8px';
+            } else {
+                this.style = '';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

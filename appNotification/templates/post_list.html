@@ -1,0 +1,41 @@
+{% extends "default.html" %}
+{% load i18n %}
+{% block content %}
+<h1 class="mb-4">{% trans "All Posts" %}</h1>
+
+<div class="mb-3">
+    <form method="get" class="row g-3">
+        <div class="col-md-4">
+            <select name="category" class="form-select">
+                <option value="">{% trans "All Categories" %}</option>
+                {% for value, name in category_choices %}
+                    <option value="{{ value }}" {% if value == request.GET.category %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <input type="text" name="q" class="form-control" placeholder="{% trans 'Search...' %}" value="{{ request.GET.q }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">{% trans "Filter" %}</button>
+        </div>
+    </form>
+</div>
+
+{% for post in posts %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">{{ post.title }}</h5>
+            <p class="card-text">{{ post.content|safe|truncatewords:30 }}</p>
+            <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-outline-primary">{% trans "Read more" %}</a>
+        </div>
+        <div class="card-footer text-muted">
+            {{ post.created_at|date }} | {{ post.get_category_display }} | {% trans "Author" %}: {{ post.author.email }}
+        </div>
+    </div>
+{% empty %}
+    <div class="alert alert-info">{% trans "No posts found" %}</div>
+{% endfor %}
+
+{% include "includes/pagination.html" %}
+{% endblock %}

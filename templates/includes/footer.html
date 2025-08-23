@@ -1,0 +1,10 @@
+{% load i18n %}
+<footer class="mt-5 py-3 bg-light text-center">
+    <div class="container">
+        <p class="mb-0">
+            &copy; {% now "Y" %} MMORPG Portal |
+            <a href="{% url 'about' %}">{% trans "About" %}</a> |
+            <a href="{% url 'contacts' %}">{% trans "Contacts" %}</a>
+        </p>
+    </div>
+</footer>

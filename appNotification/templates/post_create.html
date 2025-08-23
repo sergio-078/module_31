@@ -1,0 +1,394 @@
+{% extends "default.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Create Post" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">{% trans "Create New Post" %}</h2>
+                        <a href="{% url 'post_list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-left"></i> {% trans "Back to Posts" %}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    {% if not user.is_authenticated %}
+                    <!-- Сообщение для неавторизованных пользователей -->
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>{% trans "Authentication Required" %}</strong>
+                        <p class="mb-0">
+                            {% trans "You need to be logged in to create posts." %}
+                            <a href="{% url 'login' %}?next={% url 'post_create' %}" class="alert-link">{% trans "Login here" %}</a>
+                            {% trans "or" %}
+                            <a href="{% url 'register' %}" class="alert-link">{% trans "register" %}</a>.
+                        </p>
+                    </div>
+                    {% else %}
+                    <!-- Форма создания поста -->
+                    <form method="post" enctype="multipart/form-data" id="post-create-form">
+                        {% csrf_token %}
+
+                        <!-- Вывод ошибок формы -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>{% trans "Please correct the errors below:" %}</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Категория -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.category.id_for_label }}" class="form-label">
+                                    <strong>{% trans "Category" %} *</strong>
+                                </label>
+                                <select name="{{ form.category.name }}" id="{{ form.category.id_for_label }}"
+                                        class="form-select" required>
+                                    <option value="">{% trans "Select category" %}</option>
+                                    {% for value, name in form.fields.category.choices %}
+                                        {% if value %}
+                                        <option value="{{ value }}" {% if form.category.value == value %}selected{% endif %}>
+                                            {{ name }}
+                                        </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                {% if form.category.help_text %}
+                                <div class="form-text">{{ form.category.help_text }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Заголовок -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">
+                                    <strong>{% trans "Title" %} *</strong>
+                                </label>
+                                <input type="text" name="{{ form.title.name }}"
+                                       id="{{ form.title.id_for_label }}"
+                                       class="form-control"
+                                       value="{{ form.title.value|default:'' }}"
+                                       maxlength="255"
+                                       placeholder="{% trans 'Enter post title' %}"
+                                       required>
+                                <div class="form-text">
+                                    <span id="title-char-count">0</span>/255 {% trans "characters" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Контент -->
+                        <div class="mb-4">
+                            <label for="{{ form.content.id_for_label }}" class="form-label">
+                                <strong>{% trans "Content" %} *</strong>
+                            </label>
+                            <textarea name="{{ form.content.name }}"
+                                      id="{{ form.content.id_for_label }}"
+                                      class="form-control"
+                                      rows="12"
+                                      placeholder="{% trans 'Write your post content here...' %}"
+                                      required>{{ form.content.value|default:'' }}</textarea>
+                            <div class="form-text">
+                                {% trans "Use the formatting tools to create rich content with images, videos, and formatting." %}
+                            </div>
+                        </div>
+
+                        <!-- Кнопки действий -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <button type="submit" class="btn btn-primary me-2" id="submit-btn">
+                                    <i class="bi bi-check-circle"></i> {% trans "Create Post" %}
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                                    <i class="bi bi-x-circle"></i> {% trans "Cancel" %}
+                                </button>
+
+                                <!-- Черновик (дополнительная функция) -->
+                                <button type="button" class="btn btn-outline-warning ms-2" id="save-draft">
+                                    <i class="bi bi-file-earmark"></i> {% trans "Save Draft" %}
+                                </button>
+                            </div>
+
+                            <div class="text-muted">
+                                <small>{% trans "* Required fields" %}</small>
+                            </div>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <!-- Подсказки для пользователя -->
+                <div class="card-footer bg-light">
+                    <h6 class="mb-3">{% trans "Post Creation Tips" %}</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">{% trans "Do:" %}</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check-circle text-success"></i> {% trans "Choose the right category" %}</li>
+                                <li><i class="bi bi-check-circle text-success"></i> {% trans "Write clear and descriptive title" %}</li>
+                                <li><i class="bi bi-check-circle text-success"></i> {% trans "Use formatting for better readability" %}</li>
+                                <li><i class="bi bi-check-circle text-success"></i> {% trans "Add images and media when needed" %}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">{% trans "Don't:" %}</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-x-circle text-danger"></i> {% trans "Use offensive language" %}</li>
+                                <li><i class="bi bi-x-circle text-danger"></i> {% trans "Post duplicate content" %}</li>
+                                <li><i class="bi bi-x-circle text-danger"></i> {% trans "Share personal information" %}</li>
+                                <li><i class="bi bi-x-circle text-danger"></i> {% trans "Violate community guidelines" %}</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Категории описания -->
+                    <div class="mt-3">
+                        <h6 class="text-primary">{% trans "Category Descriptions:" %}</h6>
+                        <div class="row small">
+                            {% for value, name in form.fields.category.choices %}
+                                {% if value %}
+                                <div class="col-md-4 mb-1">
+                                    <strong>{{ name }}:</strong>
+                                    {% if value == 'tanks' %}{% trans "Tank classes and strategies" %}
+                                    {% elif value == 'heals' %}{% trans "Healing classes and techniques" %}
+                                    {% elif value == 'dd' %}{% trans "Damage dealers and DPS guides" %}
+                                    {% elif value == 'traders' %}{% trans "Trading and economy" %}
+                                    {% elif value == 'guildmasters' %}{% trans "Guild management" %}
+                                    {% elif value == 'questgivers' %}{% trans "Quests and missions" %}
+                                    {% elif value == 'blacksmiths' %}{% trans "Crafting and blacksmithing" %}
+                                    {% elif value == 'tanners' %}{% trans "Leatherworking and skinning" %}
+                                    {% elif value == 'potionmakers' %}{% trans "Alchemy and potions" %}
+                                    {% elif value == 'spellmasters' %}{% trans "Magic and spells" %}
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+#post-create-form .form-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+#post-create-form .form-select:focus,
+#post-create-form .form-control:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+#title-char-count {
+    font-weight: 600;
+}
+
+#title-char-count.text-warning {
+    color: #fd7e14 !important;
+}
+
+#title-char-count.text-danger {
+    color: #dc3545 !important;
+}
+
+.card-footer.bg-light {
+    border-top: 1px solid #dee2e6;
+}
+
+.bi-check-circle.text-success {
+    color: #198754 !important;
+}
+
+.bi-x-circle.text-danger {
+    color: #dc3545 !important;
+}
+
+#submit-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+/* Стили для превью контента */
+.content-preview {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    background-color: #f8f9fa;
+    display: none;
+}
+
+.content-preview h4 {
+    color: #495057;
+    border-bottom: 2px solid #0d6efd;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('post-create-form');
+    const titleInput = document.getElementById('{{ form.title.id_for_label }}');
+    const contentInput = document.getElementById('{{ form.content.id_for_label }}');
+    const charCount = document.getElementById('title-char-count');
+    const submitBtn = document.getElementById('submit-btn');
+    const saveDraftBtn = document.getElementById('save-draft');
+
+    let formChanged = false;
+
+    // Подсчет символов в заголовке
+    if (titleInput && charCount) {
+        titleInput.addEventListener('input', function() {
+            const count = this.value.length;
+            charCount.textContent = count;
+
+            // Изменение цвета при приближении к лимиту
+            if (count > 200) {
+                charCount.classList.add('text-danger');
+                charCount.classList.remove('text-warning');
+            } else if (count > 150) {
+                charCount.classList.add('text-warning');
+                charCount.classList.remove('text-danger');
+            } else {
+                charCount.classList.remove('text-warning', 'text-danger');
+            }
+
+            formChanged = true;
+        });
+
+        // Инициализация счетчика
+        charCount.textContent = titleInput.value.length;
+    }
+
+    // Отслеживание изменений в форме
+    const formInputs = form.querySelectorAll('input, textarea, select');
+    formInputs.forEach(input => {
+        input.addEventListener('change', () => formChanged = true);
+        input.addEventListener('input', () => formChanged = true);
+    });
+
+    // Предупреждение при покидании страницы
+    window.addEventListener('beforeunload', function(e) {
+        if (formChanged) {
+            e.preventDefault();
+            e.returnValue = '{% trans "You have unsaved changes. Are you sure you want to leave?" %}';
+        }
+    });
+
+    // Сброс флага при отправке формы
+    form.addEventListener('submit', function() {
+        formChanged = false;
+        // Блокировка кнопки при отправке
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> {% trans "Creating..." %}';
+    });
+
+    // Сохранение черновика (localStorage)
+    if (saveDraftBtn) {
+        saveDraftBtn.addEventListener('click', function() {
+            const draftData = {
+                title: titleInput.value,
+                content: contentInput.value,
+                category: document.getElementById('{{ form.category.id_for_label }}').value,
+                savedAt: new Date().toLocaleString()
+            };
+
+            localStorage.setItem('post_draft', JSON.stringify(draftData));
+
+            // Уведомление
+            alert('{% trans "Draft saved locally. It will be available when you return to this page." %}');
+            formChanged = false;
+        });
+    }
+
+    // Загрузка черновика при загрузке страницы
+    function loadDraft() {
+        const draft = localStorage.getItem('post_draft');
+        if (draft) {
+            const draftData = JSON.parse(draft);
+            if (confirm('{% trans "You have a saved draft. Would you like to load it?" %}')) {
+                titleInput.value = draftData.title || '';
+                contentInput.value = draftData.content || '';
+                document.getElementById('{{ form.category.id_for_label }}').value = draftData.category || '';
+
+                // Обновляем счетчик символов
+                if (charCount) {
+                    charCount.textContent = draftData.title?.length || 0;
+                }
+
+                formChanged = true;
+            }
+        }
+    }
+
+    // Очистка черновика после успешной отправки
+    function clearDraft() {
+        localStorage.removeItem('post_draft');
+    }
+
+    // Загрузка черновика при загрузке страницы
+    loadDraft();
+
+    // Валидация минимальной длины
+    form.addEventListener('submit', function(e) {
+        if (titleInput.value.length < 5) {
+            e.preventDefault();
+            alert('{% trans "Title must be at least 5 characters long." %}');
+            titleInput.focus();
+            return false;
+        }
+
+        if (contentInput.value.length < 20) {
+            e.preventDefault();
+            alert('{% trans "Content must be at least 20 characters long." %}');
+            contentInput.focus();
+            return false;
+        }
+
+        if (!document.getElementById('{{ form.category.id_for_label }}').value) {
+            e.preventDefault();
+            alert('{% trans "Please select a category." %}');
+            return false;
+        }
+
+        clearDraft();
+        return true;
+    });
+
+    // Инициализация CKEditor (если подключен)
+    if (typeof CKEDITOR !== 'undefined' && contentInput) {
+        CKEDITOR.replace(contentInput.id);
+
+        // Обновление текстареа при изменении в редакторе
+        CKEDITOR.instances[contentInput.id].on('change', function() {
+            formChanged = true;
+        });
+    }
+});
+</script>
+{% endblock %}

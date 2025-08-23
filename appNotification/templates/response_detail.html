@@ -1,0 +1,48 @@
+{% extends "default.html" %}
+{% load i18n %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>{% trans "Response Details" %}</h3>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <h5>{% trans "Post" %}:</h5>
+            <a href="{% url 'post_detail' response.post.pk %}">{{ response.post.title }}</a>
+        </div>
+
+        <div class="mb-3">
+            <h5>{% trans "Response text" %}:</h5>
+            <p>{{ response.text }}</p>
+        </div>
+
+        <div class="mb-3">
+            <h5>{% trans "Author" %}:</h5>
+            <p>{{ response.author.email }}</p>
+        </div>
+
+        <div class="mb-3">
+            <h5>{% trans "Date" %}:</h5>
+            <p>{{ response.created_at|date:"DATETIME_FORMAT" }}</p>
+        </div>
+
+        <div class="mb-3">
+            <h5>{% trans "Status" %}:</h5>
+            <span class="badge bg-{% if response.is_accepted %}success{% else %}warning{% endif %}">
+                {% if response.is_accepted %}{% trans "Accepted" %}{% else %}{% trans "Pending" %}{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="card-footer">
+        {% if can_edit %}
+            <a href="{% url 'response_edit' response.pk %}" class="btn btn-primary">{% trans "Edit" %}</a>
+        {% endif %}
+        {% if can_accept %}
+            <a href="{% url 'accept_response' response.pk %}" class="btn btn-success">{% trans "Accept" %}</a>
+        {% endif %}
+        {% if can_delete %}
+            <a href="{% url 'response_delete' response.pk %}" class="btn btn-danger">{% trans "Delete" %}</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
