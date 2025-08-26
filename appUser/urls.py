@@ -6,12 +6,12 @@ from django.utils.translation import gettext_lazy as _
 urlpatterns = [
     # Auth
     path('login/', LoginView.as_view(
-        template_name='appUser/login.html',
+        template_name='login.html',
         extra_context={'title': _('Login')}
     ), name='login'),
 
     path('logout/', LogoutView.as_view(
-        template_name='appUser/logout.html',
+        template_name='logout.html',
         extra_context={'title': _('Logout')}
     ), name='logout'),
 

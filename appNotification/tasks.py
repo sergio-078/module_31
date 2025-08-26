@@ -93,3 +93,41 @@ def send_weekly_posts_digest():
                     user=subscription.user,
                     action=f"Received weekly posts digest for category {subscription.category.name}",
                 )
+
+
+def send_weekly_category_digest():
+    # Рассылка по категориям объявлений
+    categories = Category.objects.all()
+
+    for category in categories:
+        # Получаем посты за последнюю неделю в этой категории
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=7)
+
+        weekly_posts = Post.objects.filter(
+            category=category.name,  # Или category=category, в зависимости от модели
+            created_at__range=(start_date, end_date)
+        )
+
+        if weekly_posts.exists():
+            # Получаем подписчиков этой категории
+            subscriptions = Subscription.objects.filter(category=category)
+
+            for subscription in subscriptions:
+                # Отправляем email каждому подписчику
+                subject = _(f'Weekly digest for {category.name}')
+                message = render_to_string('appNotification/emails/weekly_category_digest.txt', {
+                    'posts': weekly_posts,
+                    'user': subscription.user,
+                    'category': category,
+                    'start_date': start_date,
+                    'end_date': end_date,
+                })
+
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [subscription.user.email],
+                    fail_silently=False,
+                )

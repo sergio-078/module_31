@@ -6,14 +6,15 @@ from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Q
+from datetime import timedelta
 
 from .models import Post, Response, News, Category, Subscription
 from .forms import PostForm, ResponseForm, NewsForm
-from appUser.models import UserActionLog
+from appUser.models import UserActionLog, CustomUser
 
 
 class AboutView(TemplateView):
@@ -256,31 +257,23 @@ def subscribe_post(request, pk):
 
 
 @login_required
-def subscribe_category(request, category_id):
-    category = get_object_or_404(Category, pk=category_id)
-    subscription, created = Subscription.objects.get_or_create(
-        user=request.user,
-        category=category,
-        defaults={'news': False}
-    )
+def personal_cabinet(request):
+    # Обработка POST запросов для подписки/отписки
+    if request.method == 'POST':
+        # Подписка/отписка на новости
+        if 'news_subscribe' in request.POST:
+            return handle_news_subscription(request)
 
-    if not created:
-        subscription.delete()
-        messages.success(request, _('You have unsubscribed from this category.'))
-    else:
-        messages.success(request, _('You have subscribed to this category.'))
+        # Подписка/отписка на категории
+        elif 'category_subscribe' in request.POST:
+            return handle_category_subscription(request)
 
-    UserActionLog.objects.create(
-        user=request.user,
-        action=f"Toggled subscription to category {category.name}",
-        ip_address=request.META.get('REMOTE_ADDR')
-    )
-
-    return redirect('post_list')
+    # GET запрос - отображение личного кабинета
+    return render_personal_cabinet(request)
 
 
-@login_required
-def subscribe_news(request):
+def handle_news_subscription(request):
+    """Обработка подписки/отписки на новости"""
     subscription, created = Subscription.objects.get_or_create(
         user=request.user,
         category=None,
@@ -289,21 +282,55 @@ def subscribe_news(request):
 
     if not created:
         subscription.delete()
-        messages.success(request, _('You have unsubscribed from news.'))
+        messages.success(request, _('Unsubscribed from news'))
+        action = "Unsubscribed from news"
     else:
-        messages.success(request, _('You have subscribed to news.'))
+        messages.success(request, _('Subscribed to news'))
+        action = "Subscribed to news"
 
     UserActionLog.objects.create(
         user=request.user,
-        action="Toggled news subscription",
+        action=action,
         ip_address=request.META.get('REMOTE_ADDR')
     )
 
-    return redirect('news_list')
+    return redirect('personal_cabinet')
 
 
-@login_required
-def personal_cabinet(request):
+def handle_category_subscription(request):
+    """Обработка подписки/отписки на категории"""
+    category_value = request.POST.get('category_value')
+    if category_value:
+        try:
+            category = Category.objects.get(value=category_value)
+            subscription, created = Subscription.objects.get_or_create(
+                user=request.user,
+                category=category,
+                defaults={'news': False}
+            )
+
+            if not created:
+                subscription.delete()
+                messages.success(request, _(f'Unsubscribed from {category.name}'))
+                action = f"Unsubscribed from category {category.name}"
+            else:
+                messages.success(request, _(f'Subscribed to {category.name}'))
+                action = f"Subscribed to category {category.name}"
+
+            UserActionLog.objects.create(
+                user=request.user,
+                action=action,
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+
+        except Category.DoesNotExist:
+            messages.error(request, _('Category not found'))
+
+    return redirect('personal_cabinet')
+
+
+def render_personal_cabinet(request):
+    """Рендеринг личного кабинета"""
     # Получаем посты пользователя
     user_posts = Post.objects.filter(author=request.user).order_by('-created_at')
 
@@ -324,9 +351,25 @@ def personal_cabinet(request):
     elif status_filter == 'pending':
         responses_to_posts = responses_to_posts.filter(is_accepted=False)
 
-    # Подписки пользователя
+    # Получаем все подписки пользователя
     subscriptions = Subscription.objects.filter(user=request.user).select_related('category')
     news_subscribed = Subscription.objects.filter(user=request.user, news=True).exists()
+
+    # Получаем ВСЕ категории
+    all_categories = Category.objects.all()
+
+    # Помечаем, подписан ли пользователь на каждую категорию
+    categories_with_status = []
+    for category in all_categories:
+        is_subscribed = Subscription.objects.filter(
+            user=request.user,
+            category=category
+        ).exists()
+
+        categories_with_status.append({
+            'category': category,
+            'is_subscribed': is_subscribed
+        })
 
     context = {
         'user_posts': user_posts,
@@ -334,7 +377,9 @@ def personal_cabinet(request):
         'responses_to_posts': responses_to_posts,
         'subscriptions': subscriptions,
         'news_subscribed': news_subscribed,
-        'categories': Category.objects.all(),
+        'categories_with_status': categories_with_status,
+        'post_filter': post_filter,
+        'status_filter': status_filter,
     }
 
     UserActionLog.objects.create(
@@ -344,6 +389,65 @@ def personal_cabinet(request):
     )
 
     return render(request, 'lk.html', context)
+
+
+@login_required
+def subscribe_category(request, category_id):
+    category = get_object_or_404(Category, pk=category_id)
+
+    # Проверяем, есть ли уже подписка
+    subscription, created = Subscription.objects.get_or_create(
+        user=request.user,
+        category=category,
+        defaults={'news': False}
+    )
+
+    if not created:
+        # Если подписка уже существует - удаляем ее (отписка)
+        subscription.delete()
+        messages.success(request, _(f'Unsubscribed from category: {category.name}'))
+        action = f"Unsubscribed from category {category.name}"
+    else:
+        messages.success(request, _(f'Subscribed to category: {category.name}'))
+        action = f"Subscribed to category {category.name}"
+
+    # Логируем действие
+    UserActionLog.objects.create(
+        user=request.user,
+        action=action,
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+
+    # ВАЖНО: возвращаем redirect
+    return redirect('personal_cabinet')
+
+
+@login_required
+def subscribe_news(request):
+    # Проверяем, есть ли уже подписка на новости
+    subscription, created = Subscription.objects.get_or_create(
+        user=request.user,
+        category=None,
+        defaults={'news': True}
+    )
+
+    if not created:
+        # Если подписка уже существует - удаляем ее (отписка)
+        subscription.delete()
+        messages.success(request, _('Unsubscribed from news'))
+        action = "Unsubscribed from news"
+    else:
+        messages.success(request, _('Subscribed to news'))
+        action = "Subscribed to news"
+
+    # Логируем действие
+    UserActionLog.objects.create(
+        user=request.user,
+        action=action,
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+
+    return redirect('personal_cabinet')
 
 
 # Аналогичные классы для News (NewsListView, NewsDetailView, NewsCreateView и т.д.)
@@ -498,3 +602,51 @@ class NewsDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         )
         messages.success(self.request, _('News deleted successfully!'))
         return super().delete(request, *args, **kwargs)
+
+
+class HomeView(TemplateView):
+    template_name = 'home.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Получаем новости и объявления, отсортированные по дате создания
+        latest_news = News.objects.all().order_by('-created_at')[:6]
+        latest_posts = Post.objects.all().select_related('author').order_by('-created_at')[:6]
+
+        # Комбинированный список для вкладки "All Content"
+        combined_content = []
+        for news in latest_news:
+            combined_content.append({
+                'type': 'news',
+                'id': news.id,
+                'title': news.title,
+                'content': news.content,
+                'created_at': news.created_at,
+                'get_category_display': None
+            })
+
+        for post in latest_posts:
+            combined_content.append({
+                'type': 'post',
+                'id': post.id,
+                'title': post.title,
+                'content': post.content,
+                'created_at': post.created_at,
+                'get_category_display': post.get_category_display()
+            })
+
+        # Сортируем комбинированный список по дате создания (новые сначала)
+        combined_content.sort(key=lambda x: x['created_at'], reverse=True)
+
+        # Статистика
+        context.update({
+            'latest_news': latest_news,
+            'latest_posts': latest_posts,
+            'combined_content': combined_content[:10],  # Ограничиваем количество
+            'news_count': News.objects.count(),
+            'posts_count': Post.objects.count(),
+            'users_count': CustomUser.objects.count(),
+        })
+
+        return context

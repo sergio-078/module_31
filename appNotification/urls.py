@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import AboutView, ContactsView
+from .views import AboutView, ContactsView, HomeView
 from django.utils.translation import gettext_lazy as _
 
 urlpatterns = [
@@ -38,4 +38,6 @@ urlpatterns = [
 
     # Personal cabinet
     path('cabinet/', views.personal_cabinet, name='personal_cabinet'),
+
+    path('', HomeView.as_view(), name='home'),
 ]

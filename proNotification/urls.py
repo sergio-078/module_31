@@ -31,13 +31,6 @@ urlpatterns = [
     path('', include('appNotification.urls')),
     path('user/', include('appUser.urls')),
 
-    # Flatpages
-    # path('about/', flatpages_views.flatpage, {'url': '/about/'}, name='about'),
-    # path('contacts/', flatpages_views.flatpage, {'url': '/contacts/'}, name='contacts'),
-
-    # Homepage
-    path('', TemplateView.as_view(template_name='post_list.html'), name='home'),
-
     path('ckeditor/', include('ckeditor_uploader.urls')),
 ]
 

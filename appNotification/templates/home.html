@@ -1,0 +1,355 @@
+{% extends "default.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "MMORPG Portal - Home" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Заголовок и описание -->
+    <div class="text-center mb-5">
+        <h1 class="display-4">{% trans "Welcome to MMORPG Portal" %}</h1>
+        <p class="lead text-muted">{% trans "Your ultimate destination for game announcements, news, and community interactions." %}</p>
+    </div>
+
+    <!-- Табы для переключения между новостями и объявлениями -->
+    <ul class="nav nav-tabs mb-4" id="contentTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="combined-tab" data-bs-toggle="tab" data-bs-target="#combined" type="button" role="tab">
+                <i class="bi bi-grid"></i> {% trans "All Content" %}
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="news-tab" data-bs-toggle="tab" data-bs-target="#news" type="button" role="tab">
+                <i class="bi bi-newspaper"></i> {% trans "News" %} ({{ news_count }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="posts-tab" data-bs-toggle="tab" data-bs-target="#posts" type="button" role="tab">
+                <i class="bi bi-megaphone"></i> {% trans "Posts" %} ({{ posts_count }})
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="contentTabsContent">
+        <!-- Вкладка со всем контентом -->
+        <div class="tab-pane fade show active" id="combined" role="tabpanel">
+            {% if combined_content %}
+            <div class="row">
+                {% for item in combined_content %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100 content-card">
+                        <div class="card-body">
+                            <!-- Бейдж типа контента -->
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge {% if item.type == 'news' %}bg-info{% else %}bg-primary{% endif %}">
+                                    {% if item.type == 'news' %}
+                                        <i class="bi bi-newspaper"></i> {% trans "News" %}
+                                    {% else %}
+                                        <i class="bi bi-megaphone"></i> {% trans "Post" %}
+                                    {% endif %}
+                                </span>
+                                <small class="text-muted">
+                                    <i class="bi bi-clock"></i> {{ item.created_at|timesince }} {% trans "ago" %}
+                                </small>
+                            </div>
+
+                            <h5 class="card-title">
+                                <a href="{% if item.type == 'news' %}{% url 'news_detail' item.id %}{% else %}{% url 'post_detail' item.id %}{% endif %}"
+                                   class="text-decoration-none">
+                                    {{ item.title }}
+                                </a>
+                            </h5>
+
+                            <p class="card-text">
+                                {{ item.content|striptags|truncatewords:30 }}
+                            </p>
+
+                            <!-- Мета-информация -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    {% if item.type == 'post' %}
+                                        <i class="bi bi-tag"></i> {{ item.get_category_display }}
+                                    {% endif %}
+                                </small>
+                                <a href="{% if item.type == 'news' %}{% url 'news_detail' item.id %}{% else %}{% url 'post_detail' item.id %}{% endif %}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    {% trans "Read more" %} →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h3 class="mt-3">{% trans "No content yet" %}</h3>
+                <p class="text-muted">{% trans "Be the first to create content!" %}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Вкладка только с новостями -->
+        <div class="tab-pane fade" id="news" role="tabpanel">
+            {% if latest_news %}
+            <div class="row">
+                {% for news in latest_news %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100 news-card">
+                        <div class="card-body">
+                            <span class="badge bg-info mb-2">
+                                <i class="bi bi-newspaper"></i> {% trans "News" %}
+                            </span>
+
+                            <h5 class="card-title">
+                                <a href="{% url 'news_detail' news.pk %}" class="text-decoration-none">
+                                    {{ news.title }}
+                                </a>
+                            </h5>
+
+                            <p class="card-text">
+                                {{ news.content|striptags|truncatewords:30 }}
+                            </p>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> {{ news.created_at|date:"d.m.Y H:i" }}
+                                </small>
+                                <a href="{% url 'news_detail' news.pk %}" class="btn btn-sm btn-outline-info">
+                                    {% trans "Read" %} →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{% url 'news_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-right"></i> {% trans "View All News" %}
+                </a>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-newspaper display-1 text-muted"></i>
+                <h3 class="mt-3">{% trans "No news yet" %}</h3>
+                <p class="text-muted">{% trans "Be the first to create news!" %}</p>
+
+                {% if user.is_staff %}
+                <a href="{% url 'news_create' %}" class="btn btn-primary mt-3">
+                    <i class="bi bi-plus-circle"></i> {% trans "Create First News" %}
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Вкладка только с объявлениями -->
+        <div class="tab-pane fade" id="posts" role="tabpanel">
+            {% if latest_posts %}
+            <div class="row">
+                {% for post in latest_posts %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100 post-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-megaphone"></i> {% trans "Post" %}
+                                </span>
+                                <span class="badge bg-secondary">
+                                    {{ post.get_category_display }}
+                                </span>
+                            </div>
+
+                            <h5 class="card-title">
+                                <a href="{% url 'post_detail' post.pk %}" class="text-decoration-none">
+                                    {{ post.title }}
+                                </a>
+                            </h5>
+
+                            <p class="card-text">
+                                {{ post.content|striptags|truncatewords:30 }}
+                            </p>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-person"></i> {{ post.author.email }}<br>
+                                    <i class="bi bi-calendar"></i> {{ post.created_at|date:"d.m.Y H:i" }}
+                                </small>
+                                <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-outline-primary">
+                                    {% trans "Read" %} →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{% url 'post_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-right"></i> {% trans "View All Posts" %}
+                </a>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-megaphone display-1 text-muted"></i>
+                <h3 class="mt-3">{% trans "No posts yet" %}</h3>
+                <p class="text-muted">{% trans "Be the first to create a post!" %}</p>
+
+                {% if user.is_authenticated %}
+                <a href="{% url 'post_create' %}" class="btn btn-primary mt-3">
+                    <i class="bi bi-plus-circle"></i> {% trans "Create First Post" %}
+                </a>
+                {% else %}
+                <a href="{% url 'login' %}" class="btn btn-primary mt-3">
+                    <i class="bi bi-box-arrow-in-right"></i> {% trans "Login to Create Post" %}
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Статистика и быстрые действия -->
+    <div class="row mt-5">
+        <div class="col-md-4 mb-4">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <i class="bi bi-newspaper display-4 text-primary mb-3"></i>
+                    <h3>{{ news_count }}</h3>
+                    <p class="text-muted">{% trans "Total News" %}</p>
+                    <a href="{% url 'news_list' %}" class="btn btn-outline-primary btn-sm">{% trans "Browse News" %}</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <i class="bi bi-megaphone display-4 text-success mb-3"></i>
+                    <h3>{{ posts_count }}</h3>
+                    <p class="text-muted">{% trans "Total Posts" %}</p>
+                    <a href="{% url 'post_list' %}" class="btn btn-outline-success btn-sm">{% trans "Browse Posts" %}</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <i class="bi bi-people display-4 text-info mb-3"></i>
+                    <h3>{{ users_count }}</h3>
+                    <p class="text-muted">{% trans "Registered Users" %}</p>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'personal_cabinet' %}" class="btn btn-outline-info btn-sm">{% trans "My Cabinet" %}</a>
+                    {% else %}
+                    <a href="{% url 'register' %}" class="btn btn-outline-info btn-sm">{% trans "Join Us" %}</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.content-card, .news-card, .post-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid #e9ecef;
+}
+
+.content-card:hover, .news-card:hover, .post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-title a {
+    color: #212529;
+    transition: color 0.2s ease-in-out;
+}
+
+.card-title a:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #dee2e6;
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    background: transparent;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.bi {
+    font-size: 1.1em;
+    vertical-align: -0.125em;
+}
+
+.tab-content {
+    min-height: 400px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Активация табов
+    const tabEls = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabEls.forEach(tabEl => {
+        tabEl.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tab = new bootstrap.Tab(this);
+            tab.show();
+        });
+    });
+
+    // Сохранение выбранной вкладки в localStorage
+    const contentTabs = document.getElementById('contentTabs');
+    if (contentTabs) {
+        contentTabs.addEventListener('click', function(e) {
+            if (e.target.classList.contains('nav-link')) {
+                const tabId = e.target.getAttribute('data-bs-target').substring(1);
+                localStorage.setItem('selectedTab', tabId);
+            }
+        });
+
+        // Восстановление выбранной вкладки
+        const savedTab = localStorage.getItem('selectedTab');
+        if (savedTab) {
+            const tabTrigger = document.querySelector(`[data-bs-target="#${savedTab}"]`);
+            if (tabTrigger) {
+                bootstrap.Tab.getInstance(tabTrigger).show();
+            }
+        }
+    }
+
+    // Плавная прокрутка к контенту при переключении табов
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    tabPanes.forEach(pane => {
+        pane.addEventListener('shown.bs.tab', function() {
+            this.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+});
+</script>
+{% endblock %}

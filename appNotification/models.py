@@ -11,7 +11,9 @@ User = get_user_model()
 
 class Category(models.Model):
     name = models.CharField(max_length=50, unique=True)
-    slug = models.SlugField(max_length=50, unique=True)
+    # slug = models.SlugField(max_length=50, unique=True)
+    value = models.CharField(max_length=20, unique=True, default='None')  # соответствует значениям из CATEGORY_CHOICES
+    description = models.TextField(blank=True)
 
     class Meta:
         verbose_name = _('Category')
@@ -111,4 +113,21 @@ class Subscription(models.Model):
     def __str__(self):
         if self.category:
             return f"{self.user.email} subscribed to {self.category.name}"
-        return f"{self.user.email} subscribed to news"
+        elif self.news:
+            return f"{self.user.email} subscribed to news"
+        return f"{self.user.email} subscription"
+
+    @classmethod
+    def get_user_subscriptions(cls, user):
+        """Получить все подписки пользователя"""
+        return cls.objects.filter(user=user).select_related('category')
+
+    @classmethod
+    def is_user_subscribed_to_news(cls, user):
+        """Проверить подписку на новости"""
+        return cls.objects.filter(user=user, news=True).exists()
+
+    @classmethod
+    def is_user_subscribed_to_category(cls, user, category):
+        """Проверить подписку на категорию"""
+        return cls.objects.filter(user=user, category=category).exists()

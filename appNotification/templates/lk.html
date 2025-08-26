@@ -1,99 +1,207 @@
 {% extends "default.html" %}
 {% load i18n %}
-{% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">{% trans "Subscriptions" %}</div>
-            <div class="card-body">
-                <form method="post" action="{% url 'news_subscribe' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn w-100 {% if news_subscribed %}btn-danger{% else %}btn-success{% endif %} mb-3">
-                        {% if news_subscribed %}{% trans "Unsubscribe from News" %}{% else %}{% trans "Subscribe to News" %}{% endif %}
-                    </button>
-                </form>
 
-                <h5>{% trans "Categories" %}</h5>
-                <ul class="list-group">
-                    {% for category in categories %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ category.name }}
-                            <form method="post" action="{% url 'category_subscribe' category.id %}">
+{% block title %}{% trans "Personal Cabinet" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Левая колонка - Подписки -->
+        <div class="col-md-4">
+            <!-- Подписка на новости -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-newspaper"></i> {% trans "News Subscription" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" name="news_subscribe"
+                                class="btn w-100 {% if news_subscribed %}btn-danger{% else %}btn-success{% endif %} mb-2">
+                            {% if news_subscribed %}
+                                <i class="bi bi-bell-slash"></i> {% trans "Unsubscribe from News" %}
+                            {% else %}
+                                <i class="bi bi-bell"></i> {% trans "Subscribe to News" %}
+                            {% endif %}
+                        </button>
+                    </form>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        {% trans "Receive weekly news digest every Monday at 8:00 AM" %}
+                    </small>
+                </div>
+            </div>
+
+            <!-- Подписка на категории объявлений -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-tags"></i> {% trans "Category Subscriptions" %}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        <i class="bi bi-lightbulb"></i>
+                        {% trans "Get notifications about new posts in selected categories" %}
+                    </p>
+
+                    <div class="list-group">
+                        {% for item in categories_with_status %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div class="flex-grow-1">
+                                <strong class="d-block">{{ item.category.name }}</strong>
+                                <small class="text-muted">
+                                    {{ item.category.description|default:"No description" }}
+                                </small>
+                            </div>
+                            <form method="post">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm {% if category.id in subscribed_categories %}btn-danger{% else %}btn-success{% endif %}">
-                                    {% if category.id in subscribed_categories %}{% trans "Unsub" %}{% else %}{% trans "Sub" %}{% endif %}
+                                <input type="hidden" name="category_value" value="{{ item.category.value }}">
+                                <button type="submit" name="category_subscribe"
+                                        class="btn btn-sm {% if item.is_subscribed %}btn-danger{% else %}btn-success{% endif %}">
+                                    {% if item.is_subscribed %}
+                                        <i class="bi bi-check-circle"></i> {% trans "Subscribed" %}
+                                    {% else %}
+                                        <i class="bi bi-plus-circle"></i> {% trans "Subscribe" %}
+                                    {% endif %}
                                 </button>
                             </form>
-                        </li>
-                    {% endfor %}
-                </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Активные подписки -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> {% trans "Active Subscriptions" %}</h5>
+                </div>
+                <div class="card-body">
+                    {% if subscriptions %}
+                    <div class="list-group list-group-flush">
+                        {% for subscription in subscriptions %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            {% if subscription.news %}
+                                <span class="text-primary">
+                                    <i class="bi bi-newspaper"></i> <strong>{% trans "News" %}</strong>
+                                </span>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" name="news_subscribe" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-x-circle"></i> {% trans "Unsubscribe" %}
+                                    </button>
+                                </form>
+                            {% elif subscription.category %}
+                                <span>
+                                    <i class="bi bi-tag"></i> <strong>{{ subscription.category.name }}</strong>
+                                </span>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category_value" value="{{ subscription.category.value }}">
+                                    <button type="submit" name="category_subscribe" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-x-circle"></i> {% trans "Unsubscribe" %}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox display-6"></i>
+                        <p class="mt-2 mb-0">{% trans "No active subscriptions" %}</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-8">
-        <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#posts" type="button">
-                    {% trans "My Posts" %}
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#responses" type="button">
-                    {% trans "Responses to Me" %}
-                </button>
-            </li>
-        </ul>
+        <!-- Правая колонка - Посты и отклики -->
+        <div class="col-md-8">
+            <ul class="nav nav-tabs" id="cabinetTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="posts-tab" data-bs-toggle="tab" data-bs-target="#posts" type="button">
+                        <i class="bi bi-megaphone"></i> {% trans "My Posts" %}
+                        <span class="badge bg-primary rounded-pill">{{ user_posts.count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="responses-tab" data-bs-toggle="tab" data-bs-target="#responses" type="button">
+                        <i class="bi bi-chat-dots"></i> {% trans "Responses to Me" %}
+                        <span class="badge bg-primary rounded-pill">{{ responses_to_posts.count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="my-responses-tab" data-bs-toggle="tab" data-bs-target="#my-responses" type="button">
+                        <i class="bi bi-chat"></i> {% trans "My Responses" %}
+                        <span class="badge bg-primary rounded-pill">{{ user_responses.count }}</span>
+                    </button>
+                </li>
+            </ul>
 
-        <div class="tab-content">
-            <div class="tab-pane fade show active" id="posts">
-                {% for post in user_posts %}
+            <div class="tab-content mt-3">
+                <!-- Вкладки с постами и откликами -->
+                <div class="tab-pane fade show active" id="posts">
+                    {% for post in user_posts %}
                     <div class="card mb-3">
                         <div class="card-body">
-                            <h5>{{ post.title }}</h5>
-                            <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-outline-primary">{% trans "View" %}</a>
-                            <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Edit" %}</a>
+                            <h5 class="card-title">{{ post.title }}</h5>
+                            <p class="text-muted">
+                                <span class="badge bg-secondary">{{ post.get_category_display }}</span>
+                                • {{ post.created_at|date:"d.m.Y H:i" }}
+                                • {{ post.responses.count }} {% trans "responses" %}
+                            </p>
+                            <div class="btn-group">
+                                <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-outline-primary">{% trans "View" %}</a>
+                                <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Edit" %}</a>
+                                <a href="{% url 'post_delete' post.pk %}" class="btn btn-sm btn-outline-danger">{% trans "Delete" %}</a>
+                            </div>
                         </div>
                     </div>
-                {% empty %}
-                    <div class="alert alert-info mt-3">{% trans "You have no posts yet" %}</div>
-                {% endfor %}
-            </div>
+                    {% empty %}
+                    <div class="alert alert-info">{% trans "You have no posts yet" %}</div>
+                    {% endfor %}
+                </div>
 
-            <div class="tab-pane fade" id="responses">
-                {% for response in responses_to_posts %}
+                <div class="tab-pane fade" id="responses">
+                    {% for response in responses_to_posts %}
                     <div class="card mb-3 {% if response.is_accepted %}border-success{% endif %}">
                         <div class="card-body">
                             <p>{{ response.text }}</p>
-                            <small>
-                                {{ response.created_at|date }} |
-                                <a href="{% url 'post_detail' response.post.pk %}">{{ response.post.title }}</a>
+                            <small class="text-muted">
+                                {{ response.author.email }} •
+                                {{ response.created_at|date:"d.m.Y H:i" }} •
+                                {{ response.post.title }}
                             </small>
                             {% if not response.is_accepted %}
-                                <a href="{% url 'accept_response' response.pk %}" class="btn btn-sm btn-success">{% trans "Accept" %}</a>
+                            <a href="{% url 'accept_response' response.pk %}" class="btn btn-sm btn-success">{% trans "Accept" %}</a>
                             {% endif %}
                             <a href="{% url 'response_delete' response.pk %}" class="btn btn-sm btn-danger">{% trans "Delete" %}</a>
                         </div>
                     </div>
-                {% empty %}
-                    <div class="alert alert-info mt-3">{% trans "No responses to your posts" %}</div>
-                {% endfor %}
+                    {% empty %}
+                    <div class="alert alert-info">{% trans "No responses to your posts" %}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="tab-pane fade" id="my-responses">
+                    {% for response in user_responses %}
+                    <div class="card mb-3 {% if response.is_accepted %}border-success{% endif %}">
+                        <div class="card-body">
+                            <p>{{ response.text }}</p>
+                            <small class="text-muted">
+                                {{ response.created_at|date:"d.m.Y H:i" }} •
+                                {{ response.post.title }}
+                            </small>
+                            <a href="{% url 'response_edit' response.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Edit" %}</a>
+                            <a href="{% url 'response_delete' response.pk %}" class="btn btn-sm btn-outline-danger">{% trans "Delete" %}</a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="alert alert-info">{% trans "You have no responses yet" %}</div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // Активация табов
-    const tabElms = document.querySelectorAll('button[data-bs-toggle="tab"]');
-    tabElms.forEach(tabEl => {
-        tabEl.addEventListener('click', event => {
-            event.preventDefault();
-            const tab = new bootstrap.Tab(event.target);
-            tab.show();
-        });
-    });
-</script>
 {% endblock %}
