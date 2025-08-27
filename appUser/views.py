@@ -1,3 +1,4 @@
+from django.contrib.auth import views as auth_views
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -10,9 +11,9 @@ from django.shortcuts import redirect
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
+import secrets
 from datetime import timedelta
 
-import secrets
 import pytz
 
 from .forms import RegistrationForm, ProfileForm
@@ -156,3 +157,58 @@ def set_language(request):
         else:
             messages.error(request, _('Invalid language.'))
     return redirect(request.META.get('HTTP_REFERER', 'home'))
+
+
+def custom_password_reset(request):
+    if request.method == 'POST':
+        try:
+            # Пытаемся отправить email
+            response = auth_views.PasswordResetView.as_view(
+                template_name='password_reset.html',
+                email_template_name='password_reset_email.html',
+                subject_template_name='password_reset_subject.txt',
+                success_url='/user/password_reset/done/'
+            )(request)
+
+            return response
+
+        except Exception as e:
+            # В случае ошибки показываем сообщение и ссылку для разработки
+            messages.error(request, _(
+                'Could not send email. Please contact administrator or '
+                'check the console for the password reset link.'
+            ))
+
+            # Для разработки: показываем ссылку вручную
+            from django.contrib.auth.tokens import default_token_generator
+            from django.utils.http import urlsafe_base64_encode
+            from django.utils.encoding import force_bytes
+
+            email = request.POST.get('email')
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user = User.objects.get(email=email)
+
+                # Генерируем ссылку вручную
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+                reset_url = f"http://localhost:8000/user/reset/{uid}/{token}/"
+
+                messages.info(request, _(
+                    f'Development reset link: {reset_url}'
+                ))
+
+            except:
+                pass
+
+            return redirect('password_reset')
+
+    # GET запрос
+    return auth_views.PasswordResetView.as_view(
+        template_name='password_reset.html',
+        email_template_name='password_reset_email.html',
+        subject_template_name='password_reset_subject.txt',
+        success_url='/user/password_reset/done/'
+    )(request)

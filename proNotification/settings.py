@@ -163,7 +163,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'appUser.CustomUser'
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'appUser.email_backends.DebugEmailBackend'
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Для отправки на реальную почту необходимо раскомментировать строки ниже
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_HOST = 'smtp.yandex.ru'
 # EMAIL_PORT = 465
 # EMAIL_HOST_USER = 'your-email@yandex.ru'
