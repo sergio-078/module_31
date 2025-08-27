@@ -1,16 +1,60 @@
 {% extends "default.html" %}
+{% load i18n %}  <!-- ДОБАВЬТЕ ЭТУ СТРОКУ -->
+
+{% block title %}{% trans "Login" %}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header">{% trans "Login" %}</div>
+            <div class="card-header">
+                <h3 class="text-center">{% trans "Login" %}</h3>
+            </div>
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
-                    {{ form.as_p }}
-                    <button type="submit" class="btn btn-primary w-100">{% trans "Login" %}</button>
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {% trans "Please correct the errors below." %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">
+                            {% trans "Email" %}
+                        </label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                        <div class="text-danger">{{ form.username.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">
+                            {% trans "Password" %}
+                        </label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                        <div class="text-danger">{{ form.password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-3">
+                        {% trans "Login" %}
+                    </button>
+
+
                 </form>
+
+                <hr>
+
+                <div class="text-center">
+                    <p class="text-muted">{% trans "Don't have an account?" %}</p>
+                    <a href="{% url 'register' %}" class="btn btn-outline-success">
+                        {% trans "Create Account" %}
+                    </a>
+                </div>
             </div>
         </div>
     </div>

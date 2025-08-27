@@ -3,8 +3,10 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager, Group, Per
 from django.utils.translation import gettext_lazy as _
 from django.core.mail import send_mail
 from django.conf import settings
+
 import secrets
-import datetime
+from django.utils import timezone
+from datetime import timedelta
 
 
 class CustomUserManager(BaseUserManager):
@@ -48,7 +50,6 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
-
 class EmailVerification(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     code = models.CharField(max_length=64)
@@ -56,24 +57,58 @@ class EmailVerification(models.Model):
 
     @classmethod
     def create_verification(cls, user):
+        """Создает новую верификацию для пользователя"""
+        # Удаляем старые верификации для этого пользователя
+        cls.objects.filter(user=user).delete()
+
         code = secrets.token_urlsafe(32)
         verification = cls.objects.create(user=user, code=code)
         return verification
 
-    def send_verification_email(self):
-        subject = _('Email Verification')
-        message = _('Please verify your email by clicking the following link: ') + \
-                  f'{settings.SITE_URL}/verify-email/{self.code}/'
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [self.user.email],
-            fail_silently=False,
-        )
-
     def is_valid(self):
-        return (datetime.datetime.now(datetime.timezone.utc) - self.created_at) < datetime.timedelta(days=1)
+        """Проверяет, действителен ли код (24 часа)"""
+        return (timezone.now() - self.created_at) < timedelta(hours=24)
+
+    def get_expiration_time(self):
+        """Возвращает время истечения кода"""
+        return self.created_at + timedelta(hours=24)
+
+    def send_verification_email(self):
+        """Отправляет email с verification ссылкой"""
+        subject = _('Email Verification - MMORPG Portal')
+
+        # Формируем сообщение с информацией о времени действия
+        verification_url = f"http://localhost:8000/user/verify/{self.code}/"
+        expiration_time = self.get_expiration_time()
+
+        message = _(
+            'Welcome to MMORPG Portal!\n\n'
+            'Please verify your email by clicking the following link:\n'
+            '{}\n\n'
+            'This verification link is valid for 24 hours until {} (UTC).\n'
+            'If you do not verify your email within 24 hours, '
+            'you will need to register again.\n\n'
+            'If you did not create an account, please ignore this email.\n\n'
+            'Best regards,\n'
+            'MMORPG Portal Team'
+        ).format(verification_url, expiration_time.strftime("%Y-%m-%d %H:%M:%S"))
+
+        # Для разработки - выводим в консоль
+        print(f"Verification email would be sent to: {self.user.email}")
+        print(f"Verification link: {verification_url}")
+        print(f"Expires at: {expiration_time}")
+
+        # Для отправки на реальную почту нужно раскомментировать:
+        # from django.core.mail import send_mail
+        # from django.conf import settings
+        # send_mail(
+        #     subject,
+        #     message,
+        #     settings.DEFAULT_FROM_EMAIL,
+        #     [self.user.email],
+        #     fail_silently=False,
+        # )
+
 
 
 class UserActionLog(models.Model):

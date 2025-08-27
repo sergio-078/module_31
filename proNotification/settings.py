@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -143,7 +144,7 @@ USE_L10N = True
 
 USE_TZ = True
 
-
+SITE_URL = 'http://localhost:8000'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -163,12 +164,12 @@ AUTH_USER_MODEL = 'appUser.CustomUser'
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.yandex.ru'
-EMAIL_PORT = 465
-EMAIL_HOST_USER = 'your-email@yandex.ru'
-EMAIL_HOST_PASSWORD = 'your-password'
-EMAIL_USE_SSL = True
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# EMAIL_HOST = 'smtp.yandex.ru'
+# EMAIL_PORT = 465
+# EMAIL_HOST_USER = 'your-email@yandex.ru'
+# EMAIL_HOST_PASSWORD = 'your-password'
+# EMAIL_USE_SSL = True
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # CKEditor settings
 CKEDITOR_UPLOAD_PATH = 'uploads/'
@@ -216,7 +217,17 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Europe/Moscow'
+# Настройки для периодических задач
+CELERY_BEAT_SCHEDULE = {
+    'clean-expired-verifications': {
+        'task': 'appUser.tasks.clean_expired_verifications',
+        'schedule': timedelta(hours=6),  # Каждые 6 часов
+    },
+}
 
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
+
+
+LOGOUT_REDIRECT_URL = '/'

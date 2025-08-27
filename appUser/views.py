@@ -6,16 +6,21 @@ from django.views import View
 from django.contrib import messages
 from django.conf import settings
 from django.core.mail import send_mail
+from django.shortcuts import redirect
+from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+
+from datetime import timedelta
+
 import secrets
 import pytz
 
-from .models import CustomUser, EmailVerification, UserActionLog
 from .forms import RegistrationForm, ProfileForm
+from .models import CustomUser, EmailVerification, UserActionLog
 
 
 class RegisterView(View):
-    template_name = 'appUser/register.html'
+    template_name = 'register.html'
 
     def get(self, request):
         form = RegistrationForm()
@@ -25,41 +30,68 @@ class RegisterView(View):
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.is_active = False
+            user.is_active = False  # Не активен до верификации
             user.save()
 
             # Создаем и отправляем код верификации
-            verification = EmailVerification.create_verification(user)
+            verification = EmailVerification.create_verification(user)  # Теперь метод существует
             verification.send_verification_email()
 
-            messages.success(request, _('Registration successful! Please check your email for verification.'))
+            messages.success(request, _(
+                'Registration successful! '
+                'Please check your email for verification link. '
+                'Link is valid for 24 hours.'
+            ))
+
             UserActionLog.objects.create(
                 user=user,
                 action="Registered new account",
                 ip_address=request.META.get('REMOTE_ADDR')
             )
             return redirect('login')
+
         return render(request, self.template_name, {'form': form})
 
 
 def verify_email(request, code):
     try:
         verification = EmailVerification.objects.get(code=code)
+
         if verification.is_valid():
             user = verification.user
             user.is_active = True
             user.save()
-            verification.delete()
+            verification.delete()  # Удаляем использованную верификацию
+
             messages.success(request, _('Email verified successfully! You can now log in.'))
             UserActionLog.objects.create(
                 user=user,
-                action="Verified email",
+                action="Email verified successfully",
                 ip_address=request.META.get('REMOTE_ADDR')
             )
             return redirect('login')
         else:
-            messages.error(request, _('Verification link has expired.'))
+            # Код истек - удаляем пользователя и верификацию
+            user = verification.user
+            email = user.email
+
+            # Удаляем пользователя и верификацию
+            verification.delete()
+            user.delete()
+
+            messages.error(request, _(
+                'Verification link has expired. '
+                'The registration has been canceled. '
+                'Please register again.'
+            ))
+
+            UserActionLog.objects.create(
+                user=None,
+                action=f"Verification expired for email: {email}",
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
             return redirect('register')
+
     except EmailVerification.DoesNotExist:
         messages.error(request, _('Invalid verification link.'))
         return redirect('register')

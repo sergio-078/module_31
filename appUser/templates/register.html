@@ -1,8 +1,27 @@
 {% extends "default.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
+        {% if debug %}
+        <div class="alert alert-info">
+            <h6>Debug Information</h6>
+            <p>Verification email would be sent to: {{ form.email.value }}</p>
+            <p>In development, please check console for verification link.</p>
+        </div>
+        {% endif %}
+
+
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>{% trans "Important:" %}</strong>
+            {% trans "After registration, you will receive a verification email. " %}
+            {% trans "The verification link is valid for 24 hours. " %}
+            {% trans "If not verified within this time, you will need to register again." %}
+        </div>
+
+
         <div class="card">
             <div class="card-header">{% trans "Register" %}</div>
             <div class="card-body">
